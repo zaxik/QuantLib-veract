@@ -19,7 +19,7 @@
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include "bonds.hpp"
+#include "toplevelfixture.hpp"
 #include "utilities.hpp"
 #include <ql/cashflows/iborcoupon.hpp>
 #include <ql/instruments/bonds/fixedratebond.hpp>
@@ -54,6 +54,10 @@
 using namespace QuantLib;
 using namespace boost::unit_test_framework;
 
+BOOST_FIXTURE_TEST_SUITE(QuantLibTests, TopLevelFixture)
+
+BOOST_AUTO_TEST_SUITE(BondsTests)
+
 #define ASSERT_CLOSE(name, settlement, calculated, expected, tolerance)  \
     if (std::fabs(calculated-expected) > tolerance) { \
     BOOST_ERROR("Failed to reproduce " << name << " at " << settlement \
@@ -61,44 +65,36 @@ using namespace boost::unit_test_framework;
                 << "\n    expected:   " << std::setprecision(8) << expected); \
     }
 
-namespace bonds_test {
+struct CommonVars {
+    // common data
+    Calendar calendar;
+    Date today;
+    Real faceAmount;
 
-    struct CommonVars {
-        // common data
-        Calendar calendar;
-        Date today;
-        Real faceAmount;
+    // setup
+    CommonVars() {
+        calendar = TARGET();
+        today = calendar.adjust(Date::todaysDate());
+        Settings::instance().evaluationDate() = today;
+        faceAmount = 1000000.0;
+    }
+};
 
-        // cleanup
-        SavedSettings backup;
-
-        // setup
-        CommonVars() {
-            calendar = TARGET();
-            today = calendar.adjust(Date::todaysDate());
-            Settings::instance().evaluationDate() = today;
-            faceAmount = 1000000.0;
-        }
-    };
-
-    void checkValue(Real value, Real expectedValue, Real tolerance, const std::string& msg) {
-        if (std::fabs(value - expectedValue) > tolerance) {
-            BOOST_ERROR(msg
-                        << std::fixed
-                        << "\n    calculated: " << value
-                        << "\n    expected:   " << expectedValue
-                        << "\n    tolerance:  " << tolerance
-                        << "\n    error:      " << value - expectedValue);
-        }
+void checkValue(Real value, Real expectedValue, Real tolerance, const std::string& msg) {
+    if (std::fabs(value - expectedValue) > tolerance) {
+        BOOST_ERROR(msg
+                    << std::fixed
+                    << "\n    calculated: " << value
+                    << "\n    expected:   " << expectedValue
+                    << "\n    tolerance:  " << tolerance
+                    << "\n    error:      " << value - expectedValue);
     }
 }
 
 
-void BondTest::testYield() {
+BOOST_AUTO_TEST_CASE(testYield) {
 
     BOOST_TEST_MESSAGE("Testing consistency of bond price/yield calculation...");
-
-    using namespace bonds_test;
 
     CommonVars vars;
 
@@ -194,11 +190,9 @@ void BondTest::testYield() {
     }
 }
 
-void BondTest::testAtmRate() {
+BOOST_AUTO_TEST_CASE(testAtmRate) {
 
     BOOST_TEST_MESSAGE("Testing consistency of bond price/ATM rate calculation...");
-
-    using namespace bonds_test;
 
     CommonVars vars;
 
@@ -254,11 +248,9 @@ void BondTest::testAtmRate() {
     }
 }
 
-void BondTest::testZspread() {
+BOOST_AUTO_TEST_CASE(testZspread) {
 
     BOOST_TEST_MESSAGE("Testing consistency of bond price/z-spread calculation...");
-
-    using namespace bonds_test;
 
     CommonVars vars;
 
@@ -333,13 +325,9 @@ void BondTest::testZspread() {
     }
 }
 
-
-
-void BondTest::testTheoretical() {
+BOOST_AUTO_TEST_CASE(testTheoretical) {
 
     BOOST_TEST_MESSAGE("Testing theoretical bond price/yield calculation...");
-
-    using namespace bonds_test;
 
     CommonVars vars;
 
@@ -415,13 +403,10 @@ void BondTest::testTheoretical() {
     }
 }
 
-
-void BondTest::testCached() {
+BOOST_AUTO_TEST_CASE(testCached) {
 
     BOOST_TEST_MESSAGE(
         "Testing bond price/yield calculation against cached values...");
-
-    using namespace bonds_test;
 
     CommonVars vars;
 
@@ -688,13 +673,9 @@ void BondTest::testCached() {
     );
 }
 
-
-
-void BondTest::testCachedZero() {
+BOOST_AUTO_TEST_CASE(testCachedZero) {
 
     BOOST_TEST_MESSAGE("Testing zero-coupon bond prices against cached values...");
-
-    using namespace bonds_test;
 
     CommonVars vars;
 
@@ -772,12 +753,9 @@ void BondTest::testCachedZero() {
     }
 }
 
-
-void BondTest::testCachedFixed() {
+BOOST_AUTO_TEST_CASE(testCachedFixed) {
 
     BOOST_TEST_MESSAGE("Testing fixed-coupon bond prices against cached values...");
-
-    using namespace bonds_test;
 
     CommonVars vars;
 
@@ -872,12 +850,9 @@ void BondTest::testCachedFixed() {
     }
 }
 
-
-void BondTest::testCachedFloating() {
+BOOST_AUTO_TEST_CASE(testCachedFloating) {
 
     BOOST_TEST_MESSAGE("Testing floating-rate bond prices against cached values...");
-
-    using namespace bonds_test;
 
     bool usingAtParCoupons = IborCoupon::Settings::instance().usingAtParCoupons();
 
@@ -1014,12 +989,10 @@ void BondTest::testCachedFloating() {
     }
 }
 
-void BondTest::testBrazilianCached() {
+BOOST_AUTO_TEST_CASE(testBrazilianCached) {
 
     BOOST_TEST_MESSAGE(
         "Testing Brazilian public bond prices against Andima cached values...");
-
-    using namespace bonds_test;
 
     CommonVars vars;
 
@@ -1103,7 +1076,7 @@ void BondTest::testBrazilianCached() {
     }
 }
 
-void BondTest::testExCouponGilt() {
+BOOST_AUTO_TEST_CASE(testExCouponGilt) {
     BOOST_TEST_MESSAGE(
         "Testing ex-coupon UK Gilt price against market values...");
     /* UK Gilts have an exCouponDate 7 business days before the coupon
@@ -1231,8 +1204,7 @@ void BondTest::testExCouponGilt() {
     }
 }
 
-
-void BondTest::testExCouponAustralianBond() {
+BOOST_AUTO_TEST_CASE(testExCouponAustralianBond) {
     BOOST_TEST_MESSAGE(
         "Testing ex-coupon Australian bond price against market values...");
     /* Australian Government Bonds have an exCouponDate 7 calendar
@@ -1365,11 +1337,9 @@ void BondTest::testExCouponAustralianBond() {
 /// This requires the use of the Schedule to be constructed
 /// with a custom date vector
 /// </summary>
-void BondTest::testBondFromScheduleWithDateVector()
+BOOST_AUTO_TEST_CASE(testBondFromScheduleWithDateVector)
 {
     BOOST_TEST_MESSAGE("Testing South African R2048 bond price using Schedule constructor with Date vector...");
-    SavedSettings backup;
-
     //When pricing bond from Yield To Maturity, use NullCalendar()
     Calendar calendar = NullCalendar();
 
@@ -1444,11 +1414,9 @@ void BondTest::testBondFromScheduleWithDateVector()
     }
 }
 
-void BondTest::testFixedBondWithGivenDates() {
+BOOST_AUTO_TEST_CASE(testFixedBondWithGivenDates) {
 
     BOOST_TEST_MESSAGE("Testing fixed-coupon bond built on schedule with given dates...");
-
-    using namespace bonds_test;
 
     CommonVars vars;
 
@@ -1566,11 +1534,9 @@ void BondTest::testFixedBondWithGivenDates() {
     }
 }
 
-void BondTest::testRiskyBondWithGivenDates() {
+BOOST_AUTO_TEST_CASE(testRiskyBondWithGivenDates) {
 
     BOOST_TEST_MESSAGE("Testing risky bond engine...");
-
-    using namespace bonds_test;
 
     CommonVars vars;
 
@@ -1632,11 +1598,8 @@ void BondTest::testRiskyBondWithGivenDates() {
     }
 }
 
-
-void BondTest::testFixedRateBondWithArbitrarySchedule() {
+BOOST_AUTO_TEST_CASE(testFixedRateBondWithArbitrarySchedule) {
     BOOST_TEST_MESSAGE("Testing fixed-rate bond with arbitrary schedule...");
-    SavedSettings backup;
-
     Calendar calendar = NullCalendar();
 
     Natural settlementDays = 3;
@@ -1673,13 +1636,11 @@ void BondTest::testFixedRateBondWithArbitrarySchedule() {
     BOOST_CHECK_NO_THROW(bond.cleanPrice());
 }
 
-
-void BondTest::testThirty360BondWithSettlementOn31st(){
+BOOST_AUTO_TEST_CASE(testThirty360BondWithSettlementOn31st){
     BOOST_TEST_MESSAGE(
         "Testing Thirty/360 bond with settlement on 31st of the month...");
 
     // cusip 3130A0X70, data is from Bloomberg
-    SavedSettings backup;
     Settings::instance().evaluationDate() = Date(28, July, 2017);
 
     Date datedDate(13, February, 2014);
@@ -1719,25 +1680,6 @@ void BondTest::testThirty360BondWithSettlementOn31st(){
     ASSERT_CLOSE("accrued", settlement, accrued, 0.7, 1e-6);
 }
 
-test_suite* BondTest::suite() {
-    auto* suite = BOOST_TEST_SUITE("Bond tests");
+BOOST_AUTO_TEST_SUITE_END()
 
-    suite->add(QUANTLIB_TEST_CASE(&BondTest::testYield));
-    suite->add(QUANTLIB_TEST_CASE(&BondTest::testAtmRate));
-    suite->add(QUANTLIB_TEST_CASE(&BondTest::testZspread));
-    suite->add(QUANTLIB_TEST_CASE(&BondTest::testTheoretical));
-    suite->add(QUANTLIB_TEST_CASE(&BondTest::testCached));
-    suite->add(QUANTLIB_TEST_CASE(&BondTest::testCachedZero));
-    suite->add(QUANTLIB_TEST_CASE(&BondTest::testCachedFixed));
-    suite->add(QUANTLIB_TEST_CASE(&BondTest::testCachedFloating));
-    suite->add(QUANTLIB_TEST_CASE(&BondTest::testBrazilianCached));
-    suite->add(QUANTLIB_TEST_CASE(&BondTest::testFixedBondWithGivenDates));
-    suite->add(QUANTLIB_TEST_CASE(&BondTest::testRiskyBondWithGivenDates));
-    suite->add(QUANTLIB_TEST_CASE(&BondTest::testExCouponGilt));
-    suite->add(QUANTLIB_TEST_CASE(&BondTest::testExCouponAustralianBond));
-    suite->add(QUANTLIB_TEST_CASE(&BondTest::testBondFromScheduleWithDateVector));
-    suite->add(QUANTLIB_TEST_CASE(&BondTest::testFixedRateBondWithArbitrarySchedule));
-    suite->add(QUANTLIB_TEST_CASE(&BondTest::testThirty360BondWithSettlementOn31st));
-    return suite;
-}
-
+BOOST_AUTO_TEST_SUITE_END()

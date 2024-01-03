@@ -17,7 +17,7 @@
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include "creditdefaultswap.hpp"
+#include "toplevelfixture.hpp"
 #include "utilities.hpp"
 #include <ql/cashflows/iborcoupon.hpp>
 #include <ql/instruments/creditdefaultswap.hpp>
@@ -49,11 +49,13 @@ using namespace QuantLib;
 using namespace boost::unit_test_framework;
 using std::map;
 
-void CreditDefaultSwapTest::testCachedValue() {
+BOOST_FIXTURE_TEST_SUITE(QuantLibTests, TopLevelFixture)
+
+BOOST_AUTO_TEST_SUITE(CreditDefaultSwapTests)
+
+BOOST_AUTO_TEST_CASE(testCachedValue) {
 
     BOOST_TEST_MESSAGE("Testing credit-default swap against cached values...");
-
-    SavedSettings backup;
 
     // Initialize curves
     Settings::instance().evaluationDate() = Date(9,June,2006);
@@ -162,13 +164,10 @@ void CreditDefaultSwapTest::testCachedValue() {
             << "    expected fair rate:   " << fairRate);
 }
 
-
-void CreditDefaultSwapTest::testCachedMarketValue() {
+BOOST_AUTO_TEST_CASE(testCachedMarketValue) {
 
     BOOST_TEST_MESSAGE(
         "Testing credit-default swap against cached market values...");
-
-    SavedSettings backup;
 
     Settings::instance().evaluationDate() = Date(9,June,2006);
     Date evalDate = Settings::instance().evaluationDate();
@@ -310,12 +309,9 @@ void CreditDefaultSwapTest::testCachedMarketValue() {
             << "    Given fair rate:     " << fairRate);
 }
 
-
-void CreditDefaultSwapTest::testImpliedHazardRate() {
+BOOST_AUTO_TEST_CASE(testImpliedHazardRate) {
 
     BOOST_TEST_MESSAGE("Testing implied hazard-rate for credit-default swaps...");
-
-    SavedSettings backup;
 
     // Initialize curves
     Calendar calendar = TARGET();
@@ -417,13 +413,10 @@ void CreditDefaultSwapTest::testImpliedHazardRate() {
     }
 }
 
-
-void CreditDefaultSwapTest::testFairSpread() {
+BOOST_AUTO_TEST_CASE(testFairSpread) {
 
     BOOST_TEST_MESSAGE(
         "Testing fair-spread calculation for credit-default swaps...");
-
-    SavedSettings backup;
 
     // Initialize curves
     Calendar calendar = TARGET();
@@ -483,12 +476,10 @@ void CreditDefaultSwapTest::testFairSpread() {
             << "    calculated NPV:    " << fairNPV);
 }
 
-void CreditDefaultSwapTest::testFairUpfront() {
+BOOST_AUTO_TEST_CASE(testFairUpfront) {
 
     BOOST_TEST_MESSAGE(
         "Testing fair-upfront calculation for credit-default swaps...");
-
-    SavedSettings backup;
 
     // Initialize curves
     Calendar calendar = TARGET();
@@ -572,14 +563,12 @@ void CreditDefaultSwapTest::testFairUpfront() {
             << "    calculated NPV:     " << fairNPV);
 }
 
-void CreditDefaultSwapTest::testIsdaEngine() {
+BOOST_AUTO_TEST_CASE(testIsdaEngine) {
 
     BOOST_TEST_MESSAGE(
         "Testing ISDA engine calculations for credit-default swaps...");
 
     bool usingAtParCoupons  = IborCoupon::Settings::instance().usingAtParCoupons();
-
-    SavedSettings backup;
 
     Date tradeDate(21, May, 2009);
     Settings::instance().evaluationDate() = tradeDate;
@@ -730,11 +719,9 @@ void CreditDefaultSwapTest::testIsdaEngine() {
     }
 }
 
-void CreditDefaultSwapTest::testAccrualRebateAmounts() {
+BOOST_AUTO_TEST_CASE(testAccrualRebateAmounts) {
 
     BOOST_TEST_MESSAGE("Testing accrual rebate amounts on credit default swaps...");
-
-    SavedSettings backup;
 
     // The accrual values are taken from various test results on the ISDA CDS model website
     // https://www.cdsmodel.com/cdsmodel/documentation.html.
@@ -767,12 +754,9 @@ void CreditDefaultSwapTest::testAccrualRebateAmounts() {
     }
 }
 
-void CreditDefaultSwapTest::testIsdaCalculatorReconcileSingleQuote ()
-{
+BOOST_AUTO_TEST_CASE(testIsdaCalculatorReconcileSingleQuote) {
     BOOST_TEST_MESSAGE(
         "Testing ISDA engine calculations for a single credit-default swap record (reconciliation)...");
-
-    SavedSettings backup;
 
     Date tradeDate(26, July, 2021);
     Settings::instance().evaluationDate() = tradeDate;
@@ -873,12 +857,9 @@ void CreditDefaultSwapTest::testIsdaCalculatorReconcileSingleQuote ()
 
 }
 
-void CreditDefaultSwapTest::testIsdaCalculatorReconcileSingleWithIssueDateInThePast ()
-{
+BOOST_AUTO_TEST_CASE(testIsdaCalculatorReconcileSingleWithIssueDateInThePast) {
     BOOST_TEST_MESSAGE(
         "Testing ISDA engine calculations for a single credit-default swap with issue date in the past...");
-
-    SavedSettings backup;
 
     Date valueDate(26, July, 2021);
     Settings::instance().evaluationDate() = valueDate;
@@ -974,16 +955,6 @@ void CreditDefaultSwapTest::testIsdaCalculatorReconcileSingleWithIssueDateInTheP
     QL_CHECK_CLOSE(calculated_accrual, expected_accrual, tolerance);
 }
 
-test_suite* CreditDefaultSwapTest::suite() {
-    auto* suite = BOOST_TEST_SUITE("Credit-default swap tests");
-    suite->add(QUANTLIB_TEST_CASE(&CreditDefaultSwapTest::testCachedValue));
-    suite->add(QUANTLIB_TEST_CASE(&CreditDefaultSwapTest::testCachedMarketValue));
-    suite->add(QUANTLIB_TEST_CASE(&CreditDefaultSwapTest::testImpliedHazardRate));
-    suite->add(QUANTLIB_TEST_CASE(&CreditDefaultSwapTest::testFairSpread));
-    suite->add(QUANTLIB_TEST_CASE(&CreditDefaultSwapTest::testFairUpfront));
-    suite->add(QUANTLIB_TEST_CASE(&CreditDefaultSwapTest::testIsdaEngine));
-    suite->add(QUANTLIB_TEST_CASE(&CreditDefaultSwapTest::testAccrualRebateAmounts));
-    suite->add(QUANTLIB_TEST_CASE(&CreditDefaultSwapTest::testIsdaCalculatorReconcileSingleQuote));
-    suite->add(QUANTLIB_TEST_CASE(&CreditDefaultSwapTest::testIsdaCalculatorReconcileSingleWithIssueDateInThePast));
-    return suite;
-}
+BOOST_AUTO_TEST_SUITE_END()
+
+BOOST_AUTO_TEST_SUITE_END()

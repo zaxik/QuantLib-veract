@@ -17,17 +17,23 @@
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include "indexes.hpp"
+#include "toplevelfixture.hpp"
 #include "utilities.hpp"
 #include <ql/indexes/bmaindex.hpp>
 #include <ql/indexes/ibor/euribor.hpp>
+#include <ql/time/calendars/target.hpp>
+#include <ql/time/daycounters/actual360.hpp>
 #include <ql/utilities/dataformatters.hpp>
 #include <boost/algorithm/string/case_conv.hpp>
 
 using namespace QuantLib;
 using namespace boost::unit_test_framework;
 
-void IndexTest::testFixingObservability() {
+BOOST_FIXTURE_TEST_SUITE(QuantLibTests, TopLevelFixture)
+
+BOOST_AUTO_TEST_SUITE(IndexTests)
+
+BOOST_AUTO_TEST_CASE(testFixingObservability) {
     BOOST_TEST_MESSAGE("Testing observability of index fixings...");
 
     ext::shared_ptr<InterestRateIndex> i1 = ext::make_shared<Euribor6M>();
@@ -64,7 +70,7 @@ void IndexTest::testFixingObservability() {
         BOOST_FAIL("Observer was not notified of added BMA fixing");
 }
 
-void IndexTest::testFixingHasHistoricalFixing() {
+BOOST_AUTO_TEST_CASE(testFixingHasHistoricalFixing) {
     BOOST_TEST_MESSAGE("Testing if index has historical fixings...");
 
     auto testCase = [](const std::string& indexName, const bool& expected, const bool& testResult) {
@@ -85,8 +91,6 @@ void IndexTest::testFixingHasHistoricalFixing() {
     Date today = Settings::instance().evaluationDate();
     while (!euribor6M->isValidFixingDate(today))
         today--;
-
-    IndexManager::instance().clearHistories();
 
     euribor6M->addFixing(today, 0.01);
 
@@ -127,9 +131,34 @@ void IndexTest::testFixingHasHistoricalFixing() {
     testCase(name, fixingNotFound, IndexManager::instance().hasHistoricalFixing(name, today));
 }
 
-test_suite* IndexTest::suite() {
-    auto* suite = BOOST_TEST_SUITE("index tests");
-    suite->add(QUANTLIB_TEST_CASE(&IndexTest::testFixingObservability));
-    suite->add(QUANTLIB_TEST_CASE(&IndexTest::testFixingHasHistoricalFixing));
-    return suite;
+BOOST_AUTO_TEST_CASE(testTenorNormalization) {
+    BOOST_TEST_MESSAGE("Testing that interest-rate index tenor is normalized correctly...");
+
+    auto i12m = IborIndex("foo", 12*Months, 2, Currency(),
+                          TARGET(), Following, false, Actual360());
+    auto i1y = IborIndex("foo", 1*Years, 2, Currency(),
+                         TARGET(), Following, false, Actual360());
+
+    if (i12m.name() != i1y.name())
+        BOOST_ERROR("12M index and 1Y index yield different names");
+
+
+    auto i6d = IborIndex("foo", 6*Days, 2, Currency(),
+                         TARGET(), Following, false, Actual360());
+    auto i7d = IborIndex("foo", 7*Days, 2, Currency(),
+                         TARGET(), Following, false, Actual360());
+
+    Date testDate(28, April, 2023);
+    Date maturity6d = i6d.maturityDate(testDate);
+    Date maturity7d = i7d.maturityDate(testDate);
+
+    if (maturity6d >= maturity7d) {
+        BOOST_ERROR("inconsistent maturity dates and tenors"
+                    << "\n  maturity date for 6-days index: " << maturity6d
+                    << "\n  maturity date for 7-days index: " << maturity7d);
+    }
 }
+
+BOOST_AUTO_TEST_SUITE_END()
+
+BOOST_AUTO_TEST_SUITE_END()

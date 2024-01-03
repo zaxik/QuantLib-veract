@@ -16,7 +16,7 @@
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include "equitytotalreturnswap.hpp"
+#include "toplevelfixture.hpp"
 #include "utilities.hpp"
 #include <ql/instruments/equitytotalreturnswap.hpp>
 #include <ql/indexes/equityindex.hpp>
@@ -31,213 +31,189 @@
 using namespace QuantLib;
 using namespace boost::unit_test_framework;
 
-namespace equitytotalreturnswap_test {
+BOOST_FIXTURE_TEST_SUITE(QuantLibTests, TopLevelFixture)
 
-	// Used to check that the exception message contains the expected message string, expMsg.
-    struct ExpErrorPred {
+BOOST_AUTO_TEST_SUITE(EquityTotalReturnSwapTests)
 
-        explicit ExpErrorPred(std::string msg) : expMsg(std::move(msg)) {}
+struct CommonVars {
 
-        bool operator()(const Error& ex) const {
-            std::string errMsg(ex.what());
-            if (errMsg.find(expMsg) == std::string::npos) {
-                BOOST_TEST_MESSAGE("Error expected to contain: '" << expMsg << "'.");
-                BOOST_TEST_MESSAGE("Actual error is: '" << errMsg << "'.");
-                return false;
-            } else {
-                return true;
-            }
-        }
+    Date today;
+    Calendar calendar;
+    DayCounter dayCount;
 
-        std::string expMsg;
-    };
+    ext::shared_ptr<EquityIndex> equityIndex;
+    ext::shared_ptr<IborIndex> usdLibor;
+    ext::shared_ptr<OvernightIndex> sofr;
+    RelinkableHandle<YieldTermStructure> interestHandle;
+    RelinkableHandle<YieldTermStructure> dividendHandle;
+    ext::shared_ptr<Quote> spot;
+    RelinkableHandle<Quote> spotHandle;
+    ext::shared_ptr<PricingEngine> discountEngine;
 
-    struct CommonVars {
+    // utilities
 
-        Date today;
-        Calendar calendar;
-        DayCounter dayCount;
+    CommonVars() {
+        calendar = TARGET();
+        dayCount = Actual365Fixed();
 
-        ext::shared_ptr<EquityIndex> equityIndex;
-        ext::shared_ptr<IborIndex> usdLibor;
-        ext::shared_ptr<OvernightIndex> sofr;
-        RelinkableHandle<YieldTermStructure> interestHandle;
-        RelinkableHandle<YieldTermStructure> dividendHandle;
-        ext::shared_ptr<Quote> spot;
-        RelinkableHandle<Quote> spotHandle;
-        ext::shared_ptr<PricingEngine> discountEngine;
+        today = calendar.adjust(Date(27, January, 2023));
+        Settings::instance().evaluationDate() = today;
 
-        // cleanup
-        SavedSettings backup;
-        // utilities
+        equityIndex = ext::make_shared<EquityIndex>("eqIndex", calendar, interestHandle,
+                                                    dividendHandle, spotHandle);
+        equityIndex->addFixing(Date(5, January, 2023), 9010.0);
+        equityIndex->addFixing(today, 8690.0);
 
-        CommonVars() {
-            calendar = TARGET();
-            dayCount = Actual365Fixed();
+        sofr = ext::make_shared<Sofr>(interestHandle);
+        sofr->addFixing(Date(3, January, 2023), 0.03);
+        sofr->addFixing(Date(4, January, 2023), 0.031);
+        sofr->addFixing(Date(5, January, 2023), 0.031);
+        sofr->addFixing(Date(6, January, 2023), 0.031);
+        sofr->addFixing(Date(9, January, 2023), 0.032);
+        sofr->addFixing(Date(10, January, 2023), 0.033);
+        sofr->addFixing(Date(11, January, 2023), 0.033);
+        sofr->addFixing(Date(12, January, 2023), 0.033);
+        sofr->addFixing(Date(13, January, 2023), 0.033);
+        sofr->addFixing(Date(17, January, 2023), 0.033);
+        sofr->addFixing(Date(18, January, 2023), 0.034);
+        sofr->addFixing(Date(19, January, 2023), 0.034);
+        sofr->addFixing(Date(20, January, 2023), 0.034);
+        sofr->addFixing(Date(23, January, 2023), 0.034);
+        sofr->addFixing(Date(24, January, 2023), 0.034);
+        sofr->addFixing(Date(25, January, 2023), 0.034);
+        sofr->addFixing(Date(26, January, 2023), 0.034);
 
-            today = calendar.adjust(Date(27, January, 2023));
-            Settings::instance().evaluationDate() = today;
+        usdLibor = ext::make_shared<USDLibor>(3 * Months, interestHandle);
+        usdLibor->addFixing(Date(3, January, 2023), 0.035);
 
-            equityIndex = ext::make_shared<EquityIndex>("eqIndex", calendar, interestHandle,
-                                                        dividendHandle, spotHandle);
-            IndexManager::instance().clearHistory(equityIndex->name());
-            equityIndex->addFixing(Date(5, January, 2023), 9010.0);
-            equityIndex->addFixing(today, 8690.0);
+        interestHandle.linkTo(flatRate(0.0375, dayCount));
+        dividendHandle.linkTo(flatRate(0.005, dayCount));
 
-            sofr = ext::make_shared<Sofr>(interestHandle);
-            IndexManager::instance().clearHistory(sofr->name());
-            sofr->addFixing(Date(3, January, 2023), 0.03);
-            sofr->addFixing(Date(4, January, 2023), 0.031);
-            sofr->addFixing(Date(5, January, 2023), 0.031);
-            sofr->addFixing(Date(6, January, 2023), 0.031);
-            sofr->addFixing(Date(9, January, 2023), 0.032);
-            sofr->addFixing(Date(10, January, 2023), 0.033);
-            sofr->addFixing(Date(11, January, 2023), 0.033);
-            sofr->addFixing(Date(12, January, 2023), 0.033);
-            sofr->addFixing(Date(13, January, 2023), 0.033);
-            sofr->addFixing(Date(17, January, 2023), 0.033);
-            sofr->addFixing(Date(18, January, 2023), 0.034);
-            sofr->addFixing(Date(19, January, 2023), 0.034);
-            sofr->addFixing(Date(20, January, 2023), 0.034);
-            sofr->addFixing(Date(23, January, 2023), 0.034);
-            sofr->addFixing(Date(24, January, 2023), 0.034);
-            sofr->addFixing(Date(25, January, 2023), 0.034);
-            sofr->addFixing(Date(26, January, 2023), 0.034);
+        discountEngine =
+            ext::shared_ptr<PricingEngine>(new DiscountingSwapEngine(interestHandle));
 
-            usdLibor = ext::make_shared<USDLibor>(3 * Months, interestHandle);
-            IndexManager::instance().clearHistory(usdLibor->name());
-            usdLibor->addFixing(Date(3, January, 2023), 0.035);
+        spot = ext::make_shared<SimpleQuote>(8700.0);
+        spotHandle.linkTo(spot);
+    }
 
-            interestHandle.linkTo(flatRate(0.0375, dayCount));
-            dividendHandle.linkTo(flatRate(0.005, dayCount));
-
-            discountEngine =
-                ext::shared_ptr<PricingEngine>(new DiscountingSwapEngine(interestHandle));
-
-            spot = ext::make_shared<SimpleQuote>(8700.0);
-            spotHandle.linkTo(spot);
-        }
-
-        ext::shared_ptr<EquityTotalReturnSwap> createTRS(Swap::Type type,
-                                                         const Schedule& schedule,
-                                                         bool useOvernightIndex,
-                                                         Rate margin = 0.0,
-                                                         Real nominal = 1.0e7,
-                                                         Real gearing = 1.0,
-                                                         Natural paymentDelay = 0) {
-            ext::shared_ptr<EquityTotalReturnSwap> swap;
-            if (useOvernightIndex) {
-                swap = ext::make_shared<EquityTotalReturnSwap>(
+    ext::shared_ptr<EquityTotalReturnSwap> createTRS(Swap::Type type,
+                                                     const Schedule& schedule,
+                                                     bool useOvernightIndex,
+                                                     Rate margin = 0.0,
+                                                     Real nominal = 1.0e7,
+                                                     Real gearing = 1.0,
+                                                     Natural paymentDelay = 0) {
+        ext::shared_ptr<EquityTotalReturnSwap> swap;
+        if (useOvernightIndex) {
+            swap = ext::make_shared<EquityTotalReturnSwap>(
                     type, nominal, schedule, equityIndex, sofr, dayCount, margin, gearing,
                     schedule.calendar(), Following, paymentDelay);
-            } else {
-                swap = ext::make_shared<EquityTotalReturnSwap>(
+        } else {
+            swap = ext::make_shared<EquityTotalReturnSwap>(
                     type, nominal, schedule, equityIndex, usdLibor, dayCount, margin, gearing,
                     schedule.calendar(), Following, paymentDelay);
-            }
-            swap->setPricingEngine(discountEngine);
-            return swap;
         }
-
-        ext::shared_ptr<EquityTotalReturnSwap> createTRS(Swap::Type type,
-                                                         const Date& start,
-                                                         const Date& end,
-                                                         bool useOvernightIndex,
-                                                         Rate margin = 0.0,
-                                                         Real nominal = 1.0e7,
-                                                         Real gearing = 1.0,
-                                                         Natural paymentDelay = 0) {
-            Schedule schedule = MakeSchedule()
-                                .from(start)
-                                .to(end)
-                                .withTenor(3 * Months)
-                                .withCalendar(calendar)
-                                .withConvention(Following)
-                                .backwards();
-            return createTRS(type, schedule, useOvernightIndex, margin, nominal, gearing,
-                             paymentDelay);
-        }
-    };
-
-    void checkFairMarginCalculation(Swap::Type type,
-                                    const Date& start,
-                                    const Date& end,
-                                    bool useOvernightIndex,
-                                    Rate margin = 0.0,
-                                    Real gearing = 1.0,
-                                    Natural paymentDelay = 0) {
-        CommonVars vars;
-
-        const Real tolerance = 1.0e-8;
-        const Real nominal = 1.0e7;
-
-        auto trs = vars.createTRS(type, start, end, useOvernightIndex, margin, nominal,
-                                  gearing, paymentDelay);
-        auto fairMargin = trs->fairMargin();
-        auto parTrs = vars.createTRS(type, start, end, useOvernightIndex, fairMargin,
-                                     nominal, gearing, paymentDelay);
-
-        if ((std::fabs(parTrs->NPV()) > tolerance))
-            BOOST_ERROR("unable to imply a fair margin\n"
-                        << "    actual NPV:    " << parTrs->NPV() << "\n"
-                        << "    expected NPV:    0.0 \n"
-                        << "    fair margin:    " << fairMargin << "\n"
-                        << "    IR index name:    " << trs->interestRateIndex()->name() << "\n");
+        swap->setPricingEngine(discountEngine);
+        return swap;
     }
 
-    Real legNPV(const Leg& leg, const Handle<YieldTermStructure>& ts) {
-        Real npv = 0.0;
-        std::for_each(leg.begin(), leg.end(), [&](const ext::shared_ptr<CashFlow>& cf) {
-            npv += cf->amount() * ts->discount(cf->date());
-        });
-        return npv;
+    ext::shared_ptr<EquityTotalReturnSwap> createTRS(Swap::Type type,
+                                                     const Date& start,
+                                                     const Date& end,
+                                                     bool useOvernightIndex,
+                                                     Rate margin = 0.0,
+                                                     Real nominal = 1.0e7,
+                                                     Real gearing = 1.0,
+                                                     Natural paymentDelay = 0) {
+        Schedule schedule = MakeSchedule()
+            .from(start)
+            .to(end)
+            .withTenor(3 * Months)
+            .withCalendar(calendar)
+            .withConvention(Following)
+            .backwards();
+        return createTRS(type, schedule, useOvernightIndex, margin, nominal, gearing,
+                         paymentDelay);
     }
+};
 
-    void checkNPVCalculation(Swap::Type type,
-                             const Date& start,
-                             const Date& end,
-                             bool useOvernightIndex,
-                             Rate margin = 0.0,
-                             Real gearing = 1.0,
-                             Natural paymentDelay = 0) {
-        CommonVars vars;
+void checkFairMarginCalculation(Swap::Type type,
+                                const Date& start,
+                                const Date& end,
+                                bool useOvernightIndex,
+                                Rate margin = 0.0,
+                                Real gearing = 1.0,
+                                Natural paymentDelay = 0) {
+    CommonVars vars;
 
-        const Real tolerance = 1.0e-2;
-        const Real nominal = 1.0e7;
+    const Real tolerance = 1.0e-8;
+    const Real nominal = 1.0e7;
 
-        auto trs = vars.createTRS(type, start, end, useOvernightIndex, margin, nominal,
-                                  gearing, paymentDelay);
+    auto trs = vars.createTRS(type, start, end, useOvernightIndex, margin, nominal,
+                              gearing, paymentDelay);
+    auto fairMargin = trs->fairMargin();
+    auto parTrs = vars.createTRS(type, start, end, useOvernightIndex, fairMargin,
+                                 nominal, gearing, paymentDelay);
 
-        auto npv = trs->NPV();
-
-        Real scaling = type == Swap::Type::Receiver ? 1.0 : -1.0;
-        auto equityLegNPV = trs->equityLegNPV();
-        auto replicatedEquityLegNPV = scaling * legNPV(trs->equityLeg(), vars.interestHandle);
-
-        if ((std::fabs(equityLegNPV - replicatedEquityLegNPV) > tolerance))
-            BOOST_ERROR("incorrect NPV of the equity leg\n"
-                        << "    actual NPV:    " << equityLegNPV << "\n"
-                        << "    expected NPV:    " << replicatedEquityLegNPV << "\n");
-
-        auto interestLegNPV = trs->interestRateLegNPV();
-        auto replicatedInterestLegNPV = -scaling * legNPV(trs->interestRateLeg(), vars.interestHandle);
-
-        if ((std::fabs(interestLegNPV - replicatedInterestLegNPV) > tolerance))
-            BOOST_ERROR("incorrect NPV of the interest leg\n"
-                        << "    actual NPV:    " << interestLegNPV << "\n"
-                        << "    expected NPV:    " << replicatedInterestLegNPV << "\n");
-
-        if ((std::fabs(npv - (equityLegNPV + interestLegNPV)) > tolerance))
-            BOOST_ERROR("summing legs NPV does not replicate the instrument NPV\n"
-                        << "    actual NPV:    " << npv << "\n"
-                        << "    NPV from summing legs:    " << equityLegNPV + interestLegNPV << "\n");
-    }
+    if ((std::fabs(parTrs->NPV()) > tolerance))
+        BOOST_ERROR("unable to imply a fair margin\n"
+                    << "    actual NPV:    " << parTrs->NPV() << "\n"
+                    << "    expected NPV:    0.0 \n"
+                    << "    fair margin:    " << fairMargin << "\n"
+                    << "    IR index name:    " << trs->interestRateIndex()->name() << "\n");
 }
 
-void EquityTotalReturnSwapTest::testFairMargin() {
-    BOOST_TEST_MESSAGE("Testing fair margin...");
+Real legNPV(const Leg& leg, const Handle<YieldTermStructure>& ts) {
+    Real npv = 0.0;
+    std::for_each(leg.begin(), leg.end(), [&](const ext::shared_ptr<CashFlow>& cf) {
+        npv += cf->amount() * ts->discount(cf->date());
+    });
+    return npv;
+}
 
-    using namespace equitytotalreturnswap_test;
+void checkNPVCalculation(Swap::Type type,
+                         const Date& start,
+                         const Date& end,
+                         bool useOvernightIndex,
+                         Rate margin = 0.0,
+                         Real gearing = 1.0,
+                         Natural paymentDelay = 0) {
+    CommonVars vars;
+
+    const Real tolerance = 1.0e-2;
+    const Real nominal = 1.0e7;
+
+    auto trs = vars.createTRS(type, start, end, useOvernightIndex, margin, nominal,
+                              gearing, paymentDelay);
+
+    auto npv = trs->NPV();
+
+    Real scaling = type == Swap::Type::Receiver ? 1.0 : -1.0;
+    auto equityLegNPV = trs->equityLegNPV();
+    auto replicatedEquityLegNPV = scaling * legNPV(trs->equityLeg(), vars.interestHandle);
+
+    if ((std::fabs(equityLegNPV - replicatedEquityLegNPV) > tolerance))
+        BOOST_ERROR("incorrect NPV of the equity leg\n"
+                    << "    actual NPV:    " << equityLegNPV << "\n"
+                    << "    expected NPV:    " << replicatedEquityLegNPV << "\n");
+
+    auto interestLegNPV = trs->interestRateLegNPV();
+    auto replicatedInterestLegNPV = -scaling * legNPV(trs->interestRateLeg(), vars.interestHandle);
+
+    if ((std::fabs(interestLegNPV - replicatedInterestLegNPV) > tolerance))
+        BOOST_ERROR("incorrect NPV of the interest leg\n"
+                    << "    actual NPV:    " << interestLegNPV << "\n"
+                    << "    expected NPV:    " << replicatedInterestLegNPV << "\n");
+
+    if ((std::fabs(npv - (equityLegNPV + interestLegNPV)) > tolerance))
+        BOOST_ERROR("summing legs NPV does not replicate the instrument NPV\n"
+                    << "    actual NPV:    " << npv << "\n"
+                    << "    NPV from summing legs:    " << equityLegNPV + interestLegNPV << "\n");
+}
+
+
+BOOST_AUTO_TEST_CASE(testFairMargin) {
+    BOOST_TEST_MESSAGE("Testing fair margin...");
 
     // Check TRS vs Libor-type index
     checkFairMarginCalculation(Swap::Receiver, Date(5, January, 2023), Date(5, April, 2023), false);
@@ -256,10 +232,8 @@ void EquityTotalReturnSwapTest::testFairMargin() {
                                -0.005, 1.0, 2);
 }
 
-void EquityTotalReturnSwapTest::testErrorWhenNegativeNominal() {
+BOOST_AUTO_TEST_CASE(testErrorWhenNegativeNominal) {
     BOOST_TEST_MESSAGE("Testing error when negative nominal...");
-
-    using namespace equitytotalreturnswap_test;
 
     CommonVars vars;
 
@@ -267,13 +241,11 @@ void EquityTotalReturnSwapTest::testErrorWhenNegativeNominal() {
         vars.createTRS(Swap::Receiver, Date(5, January, 2023), Date(5, April, 2023), false, 0.0,
                        -1.e7),
         Error,
-        equitytotalreturnswap_test::ExpErrorPred("Nominal cannot be negative"));
+        ExpectedErrorMessage("Nominal cannot be negative"));
 }
 
-void EquityTotalReturnSwapTest::testErrorWhenNoPaymentCalendar() {
+BOOST_AUTO_TEST_CASE(testErrorWhenNoPaymentCalendar) {
     BOOST_TEST_MESSAGE("Testing error when payment calendar is missing...");
-
-    using namespace equitytotalreturnswap_test;
 
     CommonVars vars;
     
@@ -282,13 +254,11 @@ void EquityTotalReturnSwapTest::testErrorWhenNoPaymentCalendar() {
 
     BOOST_CHECK_EXCEPTION(
         vars.createTRS(Swap::Receiver, sch, false), Error,
-        equitytotalreturnswap_test::ExpErrorPred("Calendar in schedule cannot be empty"));
+        ExpectedErrorMessage("Calendar in schedule cannot be empty"));
 }
 
-void EquityTotalReturnSwapTest::testEquityLegNPV() {
+BOOST_AUTO_TEST_CASE(testEquityLegNPV) {
     BOOST_TEST_MESSAGE("Testing equity leg NPV replication...");
-
-    using namespace equitytotalreturnswap_test;
 
     CommonVars vars;
 
@@ -311,10 +281,8 @@ void EquityTotalReturnSwapTest::testEquityLegNPV() {
                     << "    expected NPV:    " << expectedEquityLegNPV << "\n");
 }
 
-void EquityTotalReturnSwapTest::testTRSNPV() {
+BOOST_AUTO_TEST_CASE(testTRSNPV) {
     BOOST_TEST_MESSAGE("Testing TRS NPV...");
-
-    using namespace equitytotalreturnswap_test;
 
     CommonVars vars;
 
@@ -332,14 +300,6 @@ void EquityTotalReturnSwapTest::testTRSNPV() {
                         -0.005, 1.0, 2);
 }
 
-test_suite* EquityTotalReturnSwapTest::suite() {
-    auto* suite = BOOST_TEST_SUITE("Equity total return swap tests");
+BOOST_AUTO_TEST_SUITE_END()
 
-    suite->add(QUANTLIB_TEST_CASE(&EquityTotalReturnSwapTest::testFairMargin));
-    suite->add(QUANTLIB_TEST_CASE(&EquityTotalReturnSwapTest::testErrorWhenNegativeNominal));
-    suite->add(QUANTLIB_TEST_CASE(&EquityTotalReturnSwapTest::testErrorWhenNoPaymentCalendar));
-    suite->add(QUANTLIB_TEST_CASE(&EquityTotalReturnSwapTest::testEquityLegNPV));
-    suite->add(QUANTLIB_TEST_CASE(&EquityTotalReturnSwapTest::testTRSNPV));
-
-    return suite;
-}
+BOOST_AUTO_TEST_SUITE_END()
